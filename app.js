@@ -1,164 +1,552 @@
-const KEY="bds68Tracker_v2";
-let plan,state,timer=null,timerStart=0,timerElapsed=0,countdownTimer=null,notifTimer=null;
 
-const $=id=>document.getElementById(id);
-async function init(){
-  plan=await fetch("plan.json").then(r=>r.json());
-  state=JSON.parse(localStorage.getItem(KEY)||"null")||{
-    day:1,completed:{},custom:[],studySeconds:0,examDate:"",reminderTime:"19:00",dark:false,lastNotification:""
+const KEY = "bds68Tracker_v2";
+let plan, state;
+let timer = null, timerStart = 0, timerElapsed = 0;
+
+const $ = id => document.getElementById(id);
+
+async function init() {
+  try {
+    const response = await fetch("./plan.json");
+    if (!response.ok) throw new Error("Could not load plan.json");
+    plan = await response.json();
+
+    state = JSON.parse(localStorage.getItem(KEY) || "null") || {
+      day: 1,
+      completed: {},
+      custom: [],
+      studySeconds: 0,
+      examDate: "",
+      reminderTime: "19:00",
+      dark: false,
+      lastNotification: ""
+    };
+
+    state.day = Math.max(1, Math.min(23, Number(state.day) || 1));
+    state.completed ||= {};
+    state.custom ||= [];
+
+    populateSubjects();
+
+    if ($("examDate")) $("examDate").value = state.examDate || "";
+    if ($("reminderTime"))
+      $("reminderTime").value = state.reminderTime || "19:00";
+
+    render();
+    renderCountdown();
+
+    setInterval(renderCountdown, 1000);
+    setInterval(checkReminder, 30000);
+
+  } catch (error) {
+    console.error(error);
+    if ($("tasks")) {
+      $("tasks").innerHTML =
+        '<div class="task"><div class="task-main">' +
+        '<b>Unable to load topics.</b>' +
+        '<div class="task-meta">Check that plan.json is in the same folder as index.html and app.js.</div>' +
+        '</div></div>';
+    }
+  }
+}
+
+function save() {
+  localStorage.setItem(KEY, JSON.stringify(state));
+}
+
+function esc(value) {
+  return String(value ?? "").replace(/[&<>"']/g, c => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;",
+    '"': "&quot;", "'": "&#39;"
+  })[c]);
+}
+
+function masterTasks() {
+  return Object.entries(plan.days).flatMap(([day, tasks]) =>
+    tasks.map((task, index) => ({
+      ...task,
+      id: task.id || `day${day}_task${index}`,
+      day: Number(day),
+      block: "Block III"
+    }))
+  );
+}
+
+function allTasks() {
+  return [...masterTasks(), ...state.custom];
+}
+
+function isDone(task) {
+  return !!state.completed[task.id];
+}
+
+function populateSubjects() {
+  const subjects = plan.subjects ||
+    [...new Set(masterTasks().map(t => t.subject))];
+
+  if ($("subjectSelect")) {
+    $("subjectSelect").innerHTML =
+      '<option value="">All subjects</option>' +
+      subjects.map(s => `<option value="${esc(s)}">${esc(s)}</option>`).join("");
+
+    $("subjectSelect").onchange = render;
+  }
+
+  if ($("addSubject")) {
+    $("addSubject").innerHTML =
+      subjects.map(s => `<option value="${esc(s)}">${esc(s)}</option>`).join("");
+  }
+}
+
+function render() {
+  document.body.classList.toggle("dark", !!state.dark);
+
+  if ($("dayTitle"))
+    $("dayTitle").textContent = `Day ${state.day} / 23`;
+
+  if ($("blockBadge")) $("blockBadge").textContent = "Block III";
+
+  if ($("todayText"))
+    $("todayText").textContent = `High-yield plan • Day ${state.day}`;
+
+  renderTasks();
+  renderStats();
+  renderSubjects();
+  renderBacklogs();
+  renderWeek();
+  fillTimerTasks();
+}
+
+function renderTasks() {
+  const selected = $("subjectSelect")?.value || "";
+
+  const tasks = allTasks().filter(task =>
+    task.day === state.day &&
+    (!selected || task.subject === selected)
+  );
+
+  if (!$("tasks")) return;
+
+  if (!tasks.length) {
+    $("tasks").innerHTML =
+      '<div class="task"><div class="task-main">' +
+      '<b>No topics found for this day.</b>' +
+      '<div class="task-meta">Check your plan.json file or add a custom topic.</div>' +
+      '</div></div>';
+    return;
+  }
+
+  $("tasks").innerHTML = tasks.map(task => `
+    <div class="task ${isDone(task) ? "done" : ""}">
+      <input type="checkbox"
+        ${isDone(task) ? "checked" : ""}
+        onchange="toggleTask('${esc(task.id)}')">
+
+      <div class="task-main">
+        <div class="task-title">${esc(task.topic)}</div>
+        <div class="task-meta">
+          ${esc(task.subject)} · ${task.minutes || 60} min
+          ${task.sourceDay ? ` · Original Day ${task.sourceDay}` : ""}
+        </div>
+      </div>
+
+      <span class="priority">${esc(task.priority || "High")}</span>
+    </div>
+  `).join("");
+}
+
+function toggleTask(id) {
+  state.completed[id] = !state.completed[id];
+  save();
+  render();
+  toast(state.completed[id] ? "Topic completed ✓" : "Topic reopened");
+}
+
+function renderStats() {
+  const tasks = allTasks();
+  const completed = tasks.filter(isDone).length;
+  const total = tasks.length;
+  const percent = total ? Math.round(completed / total * 100) : 0;
+  const today = tasks.filter(t => t.day === state.day);
+  const todayPercent = today.length
+    ? Math.round(today.filter(isDone).length / today.length * 100)
+    : 0;
+  const backlog = getBacklogs().length;
+
+  if ($("completedStat")) $("completedStat").textContent = completed;
+  if ($("daysStat")) $("daysStat").textContent = "23";
+  if ($("overallPct")) $("overallPct").textContent = percent + "%";
+  if ($("todayPct")) $("todayPct").textContent = todayPercent + "%";
+  if ($("backlogCount")) $("backlogCount").textContent = backlog;
+  if ($("navBacklogCount")) $("navBacklogCount").textContent = backlog;
+  if ($("backlogHint"))
+    $("backlogHint").textContent = backlog
+      ? "Needs your attention" : "Nothing overdue";
+
+  if ($("studyTime"))
+    $("studyTime").textContent =
+      `${Math.floor(state.studySeconds / 3600)}h ` +
+      `${Math.floor(state.studySeconds % 3600 / 60)}m`;
+
+  if ($("overallDonut")) {
+    $("overallDonut").style.background =
+      `conic-gradient(var(--purple) ${percent * 3.6}deg, #e9e8f4 ${percent * 3.6}deg 360deg)`;
+  }
+
+  if ($("legendDone")) $("legendDone").textContent = percent + "%";
+  if ($("legendDoing")) $("legendDoing").textContent = "0%";
+  if ($("legendPending"))
+    $("legendPending").textContent = (100 - percent) + "%";
+
+  if ($("p3")) $("p3").textContent = percent + "%";
+  if ($("b3")) $("b3").style.width = percent + "%";
+}
+
+function renderSubjects() {
+  if (!$("subjectProgress")) return;
+
+  const subjects = plan.subjects ||
+    [...new Set(allTasks().map(t => t.subject))];
+
+  $("subjectProgress").innerHTML = subjects.map(subject => {
+    const tasks = allTasks().filter(t => t.subject === subject);
+    const percent = tasks.length
+      ? Math.round(tasks.filter(isDone).length / tasks.length * 100)
+      : 0;
+
+    return `
+      <div class="subject-line">
+        <div class="line-top">
+          <span>${esc(subject)}</span>
+          <b>${percent}%</b>
+        </div>
+        <div class="bar"><i style="width:${percent}%"></i></div>
+      </div>
+    `;
+  }).join("");
+}
+
+function getBacklogs() {
+  return allTasks()
+    .filter(t => t.day < state.day && !isDone(t))
+    .sort((a, b) => a.day - b.day);
+}
+
+function renderBacklogs() {
+  if (!$("backlogs")) return;
+
+  const tasks = getBacklogs();
+
+  $("backlogs").innerHTML = tasks.length
+    ? tasks.slice(0, 10).map(t => `
+        <div class="backlog-item">
+          <b>Day ${t.day} — ${esc(t.topic)}</b>
+          <div class="task-meta">
+            ${esc(t.subject)} · ${esc(t.priority || "High")} priority
+          </div>
+        </div>
+      `).join("") +
+      (tasks.length > 10
+        ? `<div class="task-meta">+ ${tasks.length - 10} more tasks</div>`
+        : "")
+    : '<div class="backlog-item">All clear 🎉 No overdue tasks.</div>';
+}
+
+function renderWeek() {
+  if (!$("weekGrid")) return;
+
+  const start = Math.floor((state.day - 1) / 7) * 7 + 1;
+  const end = Math.min(23, start + 6);
+
+  $("weekGrid").innerHTML = Array.from(
+    { length: end - start + 1 }, (_, i) => {
+      const day = start + i;
+      const tasks = allTasks().filter(t => t.day === day);
+      const percent = tasks.length
+        ? Math.round(tasks.filter(isDone).length / tasks.length * 100)
+        : 0;
+
+      return `
+        <div class="daybox">
+          <strong>Day ${day}</strong>
+          <span>${percent}%</span>
+          <small>${percent === 100 ? "✓ Complete" :
+            percent ? "In progress" : "Pending"}</small>
+        </div>
+      `;
+    }
+  ).join("");
+}
+
+function fillTimerTasks() {
+  if (!$("timerTask")) return;
+
+  const tasks = allTasks().filter(t => t.day === state.day);
+
+  $("timerTask").innerHTML = tasks.map(t =>
+    `<option value="${esc(t.id)}">${esc(t.topic)}</option>`
+  ).join("");
+}
+
+function timerDisplay(seconds) {
+  const h = String(Math.floor(seconds / 3600)).padStart(2, "0");
+  const m = String(Math.floor(seconds % 3600 / 60)).padStart(2, "0");
+  const s = String(seconds % 60).padStart(2, "0");
+
+  if ($("timer")) $("timer").textContent = `${h}:${m}:${s}`;
+}
+
+function startTimer() {
+  if (timer) return;
+
+  timerStart = Date.now() - timerElapsed * 1000;
+
+  timer = setInterval(() => {
+    timerDisplay(Math.floor((Date.now() - timerStart) / 1000));
+  }, 1000);
+
+  toast("Study timer started");
+}
+
+function pauseTimer() {
+  if (!timer) return;
+
+  timerElapsed = Math.floor((Date.now() - timerStart) / 1000);
+  clearInterval(timer);
+  timer = null;
+  toast("Timer paused");
+}
+
+function finishTimer() {
+  pauseTimer();
+
+  if (!timerElapsed) return;
+
+  state.studySeconds += timerElapsed;
+  timerElapsed = 0;
+  timerStart = 0;
+
+  timerDisplay(0);
+  save();
+  render();
+  toast("Study time saved ✓");
+}
+
+function addTask() {
+  const topic = $("addTopic")?.value.trim();
+  if (!topic) {
+    toast("Enter a topic name");
+    return;
+  }
+
+  state.custom.push({
+    id: "custom-" + Date.now(),
+    day: state.day,
+    block: "Block III",
+    subject: $("addSubject")?.value || "Custom",
+    topic,
+    priority: $("addPriority")?.value || "High",
+    minutes: Number($("addMinutes")?.value) || 60
+  });
+
+  $("addTopic").value = "";
+  save();
+  render();
+  toast("Topic added ✓");
+}
+
+function renderCountdown() {
+  if (!$("countdown")) return;
+
+  if (!state.examDate) {
+    $("countdown").textContent = "SET EXAM DATE";
+    return;
+  }
+
+  const diff = new Date(state.examDate).getTime() - Date.now();
+
+  if (diff <= 0) {
+    $("countdown").textContent = "EXAM TIME";
+    return;
+  }
+
+  const seconds = Math.floor(diff / 1000);
+  const days = Math.floor(seconds / 86400);
+  const hours = Math.floor(seconds % 86400 / 3600);
+  const minutes = Math.floor(seconds % 3600 / 60);
+  const secs = seconds % 60;
+
+  $("countdown").textContent =
+    `${days}d ${String(hours).padStart(2, "0")}h ` +
+    `${String(minutes).padStart(2, "0")}m ` +
+    `${String(secs).padStart(2, "0")}s`;
+}
+
+function saveSettings() {
+  state.examDate = $("examDate")?.value || "";
+  state.reminderTime = $("reminderTime")?.value || "19:00";
+  save();
+  renderCountdown();
+  toast("Settings saved ✓");
+}
+
+async function enableNotifications() {
+  if (!("Notification" in window)) {
+    toast("Notifications are not supported by this browser");
+    return;
+  }
+
+  const permission = await Notification.requestPermission();
+  toast(permission === "granted"
+    ? "Notifications enabled ✓"
+    : "Please allow notifications in browser settings");
+}
+
+function checkReminder() {
+  if (!("Notification" in window) ||
+      Notification.permission !== "granted") return;
+
+  const now = new Date();
+  const time = [
+    String(now.getHours()).padStart(2, "0"),
+    String(now.getMinutes()).padStart(2, "0")
+  ].join(":");
+
+  if (time !== (state.reminderTime || "19:00")) return;
+
+  const today = now.toDateString();
+  if (state.lastNotification === today) return;
+
+  const backlog = getBacklogs();
+  const pending = allTasks().filter(
+    t => t.day === state.day && !isDone(t)
+  );
+
+  const message = backlog.length
+    ? `You have ${backlog.length} backlog tasks to catch up on.`
+    : pending.length
+      ? `${pending.length} study tasks remain today.`
+      : "Today's study tasks are complete. Great work!";
+
+  new Notification("BDS Study Reminder", { body: message });
+  state.lastNotification = today;
+  save();
+}
+
+function weekendPlan() {
+  const tasks = getBacklogs();
+
+  showModal("Weekend Backlog Plan", tasks.length
+    ? tasks.map(t => `
+        <div class="backlog-item">
+          <b>Day ${t.day} — ${esc(t.topic)}</b>
+          <div class="task-meta">${esc(t.subject)} · ${esc(t.priority || "High")}</div>
+        </div>
+      `).join("")
+    : "<p>No backlog. Use this time for MCQs and revision.</p>");
+}
+
+function laterRevision() {
+  showModal("Later Revision Topics",
+    (plan.laterRevision || []).map(t =>
+      `<div class="backlog-item">${esc(t)}</div>`
+    ).join(""));
+}
+
+function showModal(title, html) {
+  if ($("modalTitle")) $("modalTitle").textContent = title;
+  if ($("modalContent")) $("modalContent").innerHTML = html;
+  if ($("modal")) $("modal").classList.remove("hidden");
+}
+
+function toast(message) {
+  if (!$("toast")) return;
+  $("toast").textContent = message;
+  $("toast").classList.add("show");
+  setTimeout(() => $("toast").classList.remove("show"), 2500);
+}
+
+function exportProgress() {
+  const blob = new Blob([JSON.stringify(state, null, 2)], {
+    type: "application/json"
+  });
+
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "bds-block-iii-progress.json";
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function importProgress(file) {
+  const reader = new FileReader();
+
+  reader.onload = () => {
+    try {
+      const imported = JSON.parse(reader.result);
+      if (!imported.completed || !Array.isArray(imported.custom)) {
+        throw new Error("Invalid progress file");
+      }
+
+      state = { ...state, ...imported };
+      save();
+      render();
+      toast("Progress imported ✓");
+    } catch {
+      toast("Invalid progress file");
+    }
   };
-  if(state.examDate) $("examDate").value=state.examDate;
-  $("reminderTime").value=state.reminderTime||"19:00";
-  populateSubjects(); render(); startLive();
-}
-function save(){localStorage.setItem(KEY,JSON.stringify(state))}
-function block(day){return "Block III"}
-function masterTasks(){
-  let a=[];
-  Object.entries(plan.days).forEach(([d,ts])=>ts.forEach(t=>a.push({...t,day:+d})));
-  return a;
-}
-function allTasks(){return masterTasks().concat(state.custom)}
-function done(id){return !!state.completed[id]}
-function esc(x){return String(x??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]))}
 
-function populateSubjects(){
-  const subs=plan.subjects||[...new Set(masterTasks().map(t=>t.subject))];
-  $("subjectSelect").innerHTML='<option value="">All Subjects</option>'+subs.map(s=>`<option>${esc(s)}</option>`).join("");
-  $("addSubject").innerHTML=subs.map(s=>`<option>${esc(s)}</option>`).join("");
-  $("subjectSelect").onchange=render;
+  reader.readAsText(file);
 }
 
-function render(){
-  document.body.classList.toggle("dark",!!state.dark);
-  $("blockBadge").textContent=block(state.day);
-  $("dayTitle").textContent=`Day ${state.day} / 23`;
-  $("todayText").textContent=`${block(state.day)} • ${"Block III • 23-day high-yield plan"} • High-yield syllabus`;
-  $("examDate").value=state.examDate||"";
-  $("reminderTime").value=state.reminderTime||"19:00";
-  document.querySelectorAll(".block-btn").forEach(b=>b.classList.toggle("active",b.dataset.block===block(state.day)));
-  renderTasks();renderStats();renderSubjects();renderBacklogs();renderWeek();fillTimerTasks();
-}
-function currentTasks(){
-  let ts=allTasks().filter(t=>t.day===state.day);
-  const sub=$("subjectSelect").value;
-  if(sub) ts=ts.filter(t=>t.subject===sub);
-  return ts;
-}
-function renderTasks(){
-  const ts=currentTasks();
-  $("taskHeading").textContent=$("subjectSelect").value?`${$("subjectSelect").value} — Day ${state.day}`:`Today's High-Yield Topics`;
-  if(!ts.length){$("tasks").innerHTML='<div class="task"><div class="task-main"><b>No tasks here.</b><div class="task-meta">Add your own topic or choose another subject.</div></div></div>';return}
-  $("tasks").innerHTML=ts.map(t=>`
-  <div class="task ${done(t.id)?"done":""}">
-    <input type="checkbox" ${done(t.id)?"checked":""} onchange="toggle('${esc(t.id)}')">
-    <div class="task-main"><div class="task-title">${esc(t.topic)}</div><div class="task-meta">${esc(t.subject)} • ⏱ ${t.minutes||60} min • Day ${t.day}${t.sourceDay?` (original Day ${t.sourceDay})`:""}</div></div>
-    <span class="priority">${esc(t.priority||"High")}</span>
-  </div>`).join("");
-}
-function toggle(id){state.completed[id]=!state.completed[id];save();render();toast(state.completed[id]?"Topic completed ✓":"Topic reopened")}
-function renderStats(){
-  const all=allTasks(), comp=all.filter(t=>done(t.id)).length;
-  const today=all.filter(t=>t.day===state.day), tc=today.filter(t=>done(t.id)).length;
-  $("todayPct").textContent=(today.length?Math.round(tc/today.length*100):0)+"%";
-  const overall=all.length?Math.round(comp/all.length*100):0;
-  $("overallPct").textContent=overall+"%";
-  $("overallDonut").style.background=`conic-gradient(var(--purple) ${overall*3.6}deg, #e9e8f4 ${overall*3.6}deg 360deg)`;
-  if($("completedStat")) $("completedStat").textContent=comp;
-  const pending=all.length-comp, inProgress=all.some(t=>t.day===state.day&&!done(t.id))?1:0;
-  if($("legendDone")) $("legendDone").textContent=overall+"%";
-  if($("legendDoing")) $("legendDoing").textContent=(inProgress?Math.max(1,Math.round(100/all.length)):0)+"%";
-  if($("legendPending")) $("legendPending").textContent=Math.max(0,100-overall-(inProgress?Math.max(1,Math.round(100/all.length)):0))+"%";
-  $("backlogCount").textContent=backlogs().length;
-  if($("navBacklogCount")) $("navBacklogCount").textContent=backlogs().length;
-  if($("backlogHint")) $("backlogHint").textContent=backlogs().length?"Needs your attention":"Nothing overdue";
-  $("studyTime").textContent=fmtHours(state.studySeconds);
-  const x=all.filter(t=>t.block==="Block III"), q=x.length?Math.round(x.filter(t=>done(t.id)).length/x.length*100):0;
-  $("p3").textContent=q+"%";$("b3").style.width=q+"%";
-}
-function renderSubjects(){
-  const box=$("subjectProgress"), all=allTasks();
-  box.innerHTML=(plan.subjects||[]).map(s=>{
-    const x=all.filter(t=>t.subject===s),q=x.length?Math.round(x.filter(t=>done(t.id)).length/x.length*100):0;
-    return `<div class="subject-line"><div class="line-top"><span>${esc(s)}</span><b>${q}%</b></div><div class="bar"><i style="width:${q}%"></i></div></div>`
-  }).join("");
-}
-function backlogs(){return allTasks().filter(t=>t.day<state.day&&!done(t.id)).sort((a,b)=>a.day-b.day)}
-function renderBacklogs(){
-  const b=backlogs();
-  $("backlogs").innerHTML=b.length?b.slice(0,10).map(t=>`
-    <div class="backlog-item"><b>Day ${t.day} — ${esc(t.topic)}</b><div class="task-meta">${esc(t.subject)} • ${esc(t.priority||"High")} priority</div></div>`).join("")+(b.length>10?`<div class="task-meta">+ ${b.length-10} more</div>`:""):'<div class="task"><div class="task-main"><b>All clear 🎉</b><div class="task-meta">No overdue tasks.</div></div></div>';
-}
-function renderWeek(){
-  const start=Math.max(1,Math.floor((state.day-1)/7)*7+1),end=Math.min(23,start+6);
-  $("weekGrid").innerHTML=Array.from({length:end-start+1},(_,i)=>{
-    const d=start+i,x=allTasks().filter(t=>t.day===d),p=x.length?Math.round(x.filter(t=>done(t.id)).length/x.length*100):0;
-    return `<div class="daybox"><strong>Day ${d}</strong><span>${p}%</span><small>${p===100?"✓ Complete":p?"In progress":"Pending"}</small></div>`
-  }).join("");
-}
-function fillTimerTasks(){
-  const ts=allTasks().filter(t=>t.day===state.day);
-  $("timerTask").innerHTML=ts.map(t=>`<option value="${esc(t.id)}">${esc(t.topic).slice(0,75)}</option>`).join("");
-}
-function fmtHours(s){return `${Math.floor(s/3600)}h ${Math.floor(s%3600/60)}m`}
-function timerText(s){let h=String(Math.floor(s/3600)).padStart(2,"0"),m=String(Math.floor(s%3600/60)).padStart(2,"0"),x=String(s%60).padStart(2,"0");$("timer").textContent=`${h}:${m}:${x}`}
-function startTimer(){if(timer)return;timerStart=Date.now()-timerElapsed*1000;timer=setInterval(()=>timerText(Math.floor((Date.now()-timerStart)/1000)),1000);toast("Study timer started")}
-function pauseTimer(){if(!timer)return;timerElapsed=Math.floor((Date.now()-timerStart)/1000);clearInterval(timer);timer=null;toast("Timer paused")}
-function finishTimer(){pauseTimer();if(!timerElapsed)return;state.studySeconds+=timerElapsed;timerElapsed=0;timerStart=0;timerText(0);save();render();toast("Study time saved ✓")}
-function selectBlock(){state.day=1;save();render()}
-function showModal(title,html){$("modalTitle").textContent=title;$("modalContent").innerHTML=html;$("modal").classList.remove("hidden")}
-function weekend(){
-  const b=backlogs().sort((a,b)=>({High:0,Medium:1,Low:2}[a.priority]??0)-({High:0,Medium:1,Low:2}[b.priority]??0)||a.day-b.day).slice(0,10);
-  showModal("Weekend Backlog Plan",b.length?'<p class="muted">Priority is High → Medium → Low, then oldest first.</p>'+b.map(t=>`<div class="backlog-item"><b>Day ${t.day}</b> — ${esc(t.topic)}<div class="task-meta">${esc(t.subject)} • ${esc(t.priority||"High")}</div></div>`).join(""):'<div class="task"><b>No backlog.</b> Use the weekend for MCQs or later-revision topics.</div>');
-}
-function later(){showModal("Later Revision",plan.laterRevision.map(x=>`<div class="backlog-item">${esc(x)}</div>`).join(""))}
-function addTask(){
-  const topic=$("addTopic").value.trim();if(!topic){toast("Enter a topic");return}
-  const subject=$("addSubject").value, priority=$("addPriority").value, minutes=+($("addMinutes").value||60);
-  state.custom.push({id:"custom-"+Date.now(),day:state.day,block:block(state.day),subject,topic,priority,minutes});
-  $("addTopic").value="";save();render();toast("Topic added ✓");
-}
-function exportProgress(){
-  const blob=new Blob([JSON.stringify(state,null,2)],{type:"application/json"}),a=document.createElement("a");
-  a.href=URL.createObjectURL(blob);a.download="bds-68-day-progress.json";a.click();URL.revokeObjectURL(a.href);
-}
-function importProgress(file){const r=new FileReader();r.onload=()=>{try{state=JSON.parse(r.result);save();render();toast("Progress imported ✓")}catch{toast("Invalid file")}};r.readAsText(file)}
-function toast(msg){const t=$("toast");t.textContent=msg;t.classList.add("show");setTimeout(()=>t.classList.remove("show"),2400)}
+$("prevBtn")?.addEventListener("click", () => {
+  state.day = Math.max(1, state.day - 1);
+  save();
+  render();
+});
 
-function saveSettings(){
-  state.examDate=$("examDate").value;state.reminderTime=$("reminderTime").value||"19:00";save();toast("Settings saved ✓");renderCountdown();
-}
-function renderCountdown(){
-  const el=$("countdown");
-  if(!state.examDate){el.textContent="SET EXAM DATE";return}
-  const target=new Date(state.examDate).getTime(), diff=target-Date.now();
-  if(diff<=0){el.textContent="EXAM TIME";return}
-  const sec=Math.floor(diff/1000),days=Math.floor(sec/86400),h=Math.floor(sec%86400/3600),m=Math.floor(sec%3600/60),s=sec%60;
-  el.textContent=`${days}d ${String(h).padStart(2,"0")}h ${String(m).padStart(2,"0")}m ${String(s).padStart(2,"0")}s`;
-}
-function startLive(){renderCountdown();countdownTimer=setInterval(renderCountdown,1000);notifTimer=setInterval(notificationCheck,60000)}
-async function enableNotifications(){
-  if(!("Notification" in window)){toast("This browser does not support notifications");return}
-  const p=await Notification.requestPermission();toast(p==="granted"?"Notifications enabled ✓":"Notification permission not granted");
-}
-function notificationCheck(){
-  if(Notification.permission!=="granted")return;
-  const now=new Date(), hh=String(now.getHours()).padStart(2,"0"),mm=String(now.getMinutes()).padStart(2,"0"),time=`${hh}:${mm}`;
-  if(time!==(state.reminderTime||"19:00")||state.lastNotification===new Date().toDateString())return;
-  const b=backlogs(), today=allTasks().filter(t=>t.day===state.day&&!done(t.id));
-  let body=b.length?`You have ${b.length} backlog task${b.length>1?"s":""}. Weekend plan is ready.`:today.length?`${today.length} task${today.length>1?"s":""} remain today.`:"Today's high-yield tasks are complete. 🎉";
-  new Notification("BDS Study Reminder",{body});
-  state.lastNotification=new Date().toDateString();save();
-}
+$("nextBtn")?.addEventListener("click", () => {
+  state.day = Math.min(23, state.day + 1);
+  save();
+  render();
+});
 
-$("prevBtn").onclick=()=>{state.day=Math.max(1,state.day-1);save();render()}
-$("nextBtn").onclick=()=>{state.day=Math.min(23,state.day+1);save();render()}
-document.querySelectorAll(".block-btn").forEach(b=>b.onclick=()=>selectBlock())
-$("startTimer").onclick=startTimer;$("pauseTimer").onclick=pauseTimer;$("finishTimer").onclick=finishTimer
-$("saveSettings").onclick=saveSettings;$("notifBtn").onclick=enableNotifications;$("weekendBtn").onclick=weekend;$("laterBtn").onclick=later;$("addBtn").onclick=addTask
-$("themeBtn").onclick=()=>{state.dark=!state.dark;save();render()}
-$("exportBtn").onclick=exportProgress
-$("importInput").onchange=e=>e.target.files[0]&&importProgress(e.target.files[0])
-$("resetBtn").onclick=()=>{if(confirm("Reset all progress?")){localStorage.removeItem(KEY);location.reload()}}
-$("closeModal").onclick=()=>$("modal").classList.add("hidden");$("modal").onclick=e=>{if(e.target.id==="modal")$("modal").classList.add("hidden")}
+$("startTimer")?.addEventListener("click", startTimer);
+$("pauseTimer")?.addEventListener("click", pauseTimer);
+$("finishTimer")?.addEventListener("click", finishTimer);
+$("addBtn")?.addEventListener("click", addTask);
+$("saveSettings")?.addEventListener("click", saveSettings);
+$("notifBtn")?.addEventListener("click", enableNotifications);
+$("weekendBtn")?.addEventListener("click", weekendPlan);
+$("laterBtn")?.addEventListener("click", laterRevision);
+
+$("themeBtn")?.addEventListener("click", () => {
+  state.dark = !state.dark;
+  save();
+  render();
+});
+
+$("exportBtn")?.addEventListener("click", exportProgress);
+
+$("importInput")?.addEventListener("change", e => {
+  if (e.target.files[0]) importProgress(e.target.files[0]);
+});
+
+$("resetBtn")?.addEventListener("click", () => {
+  if (confirm("Reset all study progress?")) {
+    localStorage.removeItem(KEY);
+    location.reload();
+  }
+});
+
+$("closeModal")?.addEventListener("click", () =>
+  $("modal")?.classList.add("hidden")
+);
+
+$("modal")?.addEventListener("click", e => {
+  if (e.target.id === "modal") $("modal").classList.add("hidden");
+});
+
 init();
