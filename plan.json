@@ -1,0 +1,395 @@
+{
+  "version": 3,
+  "title": "BDS Block III — 23 Day High-Yield Tracker",
+  "block": "Block III",
+  "days_total": 23,
+  "source_day_range": "46–68",
+  "days": {
+    "1": [
+      {
+        "subject": "Dental Materials",
+        "topic": "Metals, alloys, metallurgy, microstructure and properties",
+        "priority": "High",
+        "minutes": 70,
+        "block": "Block III",
+        "id": "d46t0",
+        "status": "pending",
+        "tags": [
+          "High Yield"
+        ],
+        "sourceDay": 46,
+        "day": 1
+      }
+    ],
+    "2": [
+      {
+        "subject": "Dental Materials",
+        "topic": "Casting: procedure, casting shrinkage, compensation and casting defects",
+        "priority": "High",
+        "minutes": 70,
+        "block": "Block III",
+        "id": "d47t0",
+        "status": "pending",
+        "tags": [
+          "High Yield"
+        ],
+        "sourceDay": 47,
+        "day": 2
+      }
+    ],
+    "3": [
+      {
+        "subject": "Dental Materials",
+        "topic": "Dental ceramics: composition, properties, fabrication, PFM and clinical applications",
+        "priority": "High",
+        "minutes": 70,
+        "block": "Block III",
+        "id": "d48t0",
+        "status": "pending",
+        "tags": [
+          "High Yield"
+        ],
+        "sourceDay": 48,
+        "day": 3
+      }
+    ],
+    "4": [
+      {
+        "subject": "Dental Materials",
+        "topic": "Metals and ceramics consolidation: comparisons, MCQs and SAQs",
+        "priority": "High",
+        "minutes": 70,
+        "block": "Block III",
+        "id": "d49t0",
+        "status": "pending",
+        "tags": [
+          "High Yield"
+        ],
+        "sourceDay": 49,
+        "day": 4
+      }
+    ],
+    "5": [
+      {
+        "subject": "Preclinical Operative Dentistry",
+        "topic": "Composite restorative material: composition, structure, properties, classification and polymerization",
+        "priority": "High",
+        "minutes": 70,
+        "block": "Block III",
+        "id": "d50t0",
+        "status": "pending",
+        "tags": [
+          "High Yield"
+        ],
+        "sourceDay": 50,
+        "day": 5
+      }
+    ],
+    "6": [
+      {
+        "subject": "Preclinical Operative Dentistry",
+        "topic": "Clinical composite: indications, contraindications, advantages, disadvantages and clinical selection",
+        "priority": "High",
+        "minutes": 70,
+        "block": "Block III",
+        "id": "d51t0",
+        "status": "pending",
+        "tags": [
+          "High Yield"
+        ],
+        "sourceDay": 51,
+        "day": 6
+      }
+    ],
+    "7": [
+      {
+        "subject": "Preclinical Operative Dentistry",
+        "topic": "Class III cavity preparation: steps, design, matrix system, Class III vs Class IV",
+        "priority": "High",
+        "minutes": 70,
+        "block": "Block III",
+        "id": "d52t0",
+        "status": "pending",
+        "tags": [
+          "High Yield"
+        ],
+        "sourceDay": 52,
+        "day": 7
+      }
+    ],
+    "8": [
+      {
+        "subject": "Preclinical Prosthodontics",
+        "topic": "Removable partial dentures and Kennedy classification: classification rules",
+        "priority": "High",
+        "minutes": 70,
+        "block": "Block III",
+        "id": "d53t0",
+        "status": "pending",
+        "tags": [
+          "High Yield"
+        ],
+        "sourceDay": 53,
+        "day": 8
+      }
+    ],
+    "9": [
+      {
+        "subject": "Preclinical Prosthodontics",
+        "topic": "Major connectors: types, indications and selection",
+        "priority": "High",
+        "minutes": 70,
+        "block": "Block III",
+        "id": "d54t0",
+        "status": "pending",
+        "tags": [
+          "High Yield"
+        ],
+        "sourceDay": 54,
+        "day": 9
+      }
+    ],
+    "10": [
+      {
+        "subject": "Preclinical Prosthodontics",
+        "topic": "Rests and direct retainers: types, functions, support and retention",
+        "priority": "High",
+        "minutes": 70,
+        "block": "Block III",
+        "id": "d55t0",
+        "status": "pending",
+        "tags": [
+          "High Yield"
+        ],
+        "sourceDay": 55,
+        "day": 10
+      }
+    ],
+    "11": [
+      {
+        "subject": "General Pathology & Microbiology",
+        "topic": "Genetics: autosomal disorders, chromosomal disorders and basic inheritance",
+        "priority": "High",
+        "minutes": 70,
+        "block": "Block III",
+        "id": "d56t0",
+        "status": "pending",
+        "tags": [
+          "High Yield"
+        ],
+        "sourceDay": 56,
+        "day": 11
+      }
+    ],
+    "12": [
+      {
+        "subject": "General Pathology & Microbiology",
+        "topic": "Virology and mycology: important organisms, diseases and diagnosis",
+        "priority": "High",
+        "minutes": 70,
+        "block": "Block III",
+        "id": "d57t0",
+        "status": "pending",
+        "tags": [
+          "High Yield"
+        ],
+        "sourceDay": 57,
+        "day": 12
+      }
+    ],
+    "13": [
+      {
+        "subject": "General Pathology & Microbiology",
+        "topic": "Neoplasia: benign vs malignant, carcinogenesis, tumor spread, metastasis, grading and staging",
+        "priority": "High",
+        "minutes": 70,
+        "block": "Block III",
+        "id": "d58t0",
+        "status": "pending",
+        "tags": [
+          "High Yield"
+        ],
+        "sourceDay": 58,
+        "day": 13
+      }
+    ],
+    "14": [
+      {
+        "subject": "Pharmacology",
+        "topic": "Opioids and antiepileptics: classification, mechanism, uses and adverse effects",
+        "priority": "High",
+        "minutes": 70,
+        "block": "Block III",
+        "id": "d59t0",
+        "status": "pending",
+        "tags": [
+          "High Yield"
+        ],
+        "sourceDay": 59,
+        "day": 14
+      }
+    ],
+    "15": [
+      {
+        "subject": "Pharmacology",
+        "topic": "Sedative-hypnotics and antidepressants: classification, mechanism, uses and adverse effects",
+        "priority": "High",
+        "minutes": 70,
+        "block": "Block III",
+        "id": "d60t0",
+        "status": "pending",
+        "tags": [
+          "High Yield"
+        ],
+        "sourceDay": 60,
+        "day": 15
+      }
+    ],
+    "16": [
+      {
+        "subject": "Pharmacology",
+        "topic": "Local anesthetics: classification, mechanism, uses and toxicity",
+        "priority": "High",
+        "minutes": 70,
+        "block": "Block III",
+        "id": "d61t0",
+        "status": "pending",
+        "tags": [
+          "High Yield"
+        ],
+        "sourceDay": 61,
+        "day": 16
+      }
+    ],
+    "17": [
+      {
+        "subject": "Pharmacology",
+        "topic": "General anesthetics: classification, mechanism, stages and adverse effects",
+        "priority": "High",
+        "minutes": 70,
+        "block": "Block III",
+        "id": "d62t0",
+        "status": "pending",
+        "tags": [
+          "High Yield"
+        ],
+        "sourceDay": 62,
+        "day": 17
+      }
+    ],
+    "18": [
+      {
+        "subject": "Pharmacology",
+        "topic": "Antidiabetic drugs and corticosteroids: major classes, mechanisms and important adverse effects",
+        "priority": "High",
+        "minutes": 70,
+        "block": "Block III",
+        "id": "d63t0",
+        "status": "pending",
+        "tags": [
+          "High Yield"
+        ],
+        "sourceDay": 63,
+        "day": 18
+      }
+    ],
+    "19": [
+      {
+        "subject": "Community & Preventive Dentistry",
+        "topic": "Research methodology: research designs, study types, variables, bias and sampling",
+        "priority": "High",
+        "minutes": 70,
+        "block": "Block III",
+        "id": "d64t0",
+        "status": "pending",
+        "tags": [
+          "High Yield"
+        ],
+        "sourceDay": 64,
+        "day": 19
+      }
+    ],
+    "20": [
+      {
+        "subject": "Community & Preventive Dentistry",
+        "topic": "Biostatistics: mean, median, mode, SD, variance, normal distribution and basic statistical tests",
+        "priority": "High",
+        "minutes": 70,
+        "block": "Block III",
+        "id": "d65t0",
+        "status": "pending",
+        "tags": [
+          "High Yield"
+        ],
+        "sourceDay": 65,
+        "day": 20
+      }
+    ],
+    "21": [
+      {
+        "subject": "Community & Preventive Dentistry",
+        "topic": "Evidence-Based Dentistry: evidence hierarchy, critical appraisal, clinical questions and research interpretation",
+        "priority": "High",
+        "minutes": 70,
+        "block": "Block III",
+        "id": "d66t0",
+        "status": "pending",
+        "tags": [
+          "High Yield"
+        ],
+        "sourceDay": 66,
+        "day": 21
+      }
+    ],
+    "22": [
+      {
+        "subject": "Community & Preventive Dentistry",
+        "topic": "Research proposal, research ethics, literature review, referencing, plagiarism and EndNote",
+        "priority": "High",
+        "minutes": 70,
+        "block": "Block III",
+        "id": "d67t0",
+        "status": "pending",
+        "tags": [
+          "High Yield"
+        ],
+        "sourceDay": 67,
+        "day": 22
+      }
+    ],
+    "23": [
+      {
+        "subject": "All Subjects",
+        "topic": "Syllabus completion check: finish remaining high-yield/SAQ items + mixed high-yield MCQs",
+        "priority": "High",
+        "minutes": 70,
+        "block": "Block III",
+        "id": "d68t0",
+        "status": "pending",
+        "tags": [
+          "High Yield"
+        ],
+        "sourceDay": 68,
+        "day": 23
+      }
+    ]
+  },
+  "subjects": [
+    "All Subjects",
+    "Community & Preventive Dentistry",
+    "Dental Materials",
+    "General Pathology & Microbiology",
+    "Pharmacology",
+    "Preclinical Operative Dentistry",
+    "Preclinical Prosthodontics"
+  ],
+  "laterRevision": [
+    "Low-weightage / 1-MCQ / Nice-to-Know topics from the official curriculum",
+    "Remaining low-weightage Dental Materials topics",
+    "Remaining low-weightage Operative Dentistry topics",
+    "Remaining low-weightage Prosthodontics topics",
+    "Remaining low-weightage Pathology & Microbiology topics",
+    "Remaining low-weightage Pharmacology topics",
+    "Remaining low-weightage Community Dentistry topics"
+  ]
+}
